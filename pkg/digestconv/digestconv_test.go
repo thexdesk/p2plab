@@ -25,7 +25,7 @@ import (
 
 func TestDigestToCid(t *testing.T) {
 	data := []byte("foobar")
-	expected := cid.NewCidV1(cid.DagProtobuf, util.Hash(data))
+	expected := cid.NewCidV1(cid.DagCBOR, util.Hash(data))
 	actual, err := DigestToCid(digest.FromBytes(data))
 	require.NoError(t, err)
 	require.Equal(t, expected.String(), actual.String())

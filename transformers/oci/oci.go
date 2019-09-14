@@ -21,8 +21,10 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/dag"
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/pkg/digestconv"
 	"github.com/Netflix/p2plab/pkg/traceutil"
@@ -33,9 +35,9 @@ import (
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	cid "github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs/dagutils"
-	ipld "github.com/ipfs/go-ipld-format"
-	unixfs "github.com/ipfs/go-unixfs"
+	ipld "github.com/ipld/go-ipld-prime"
+	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	multihash "github.com/multiformats/go-multihash"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -117,12 +119,17 @@ func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source strin
 	}
 
 	zerolog.Ctx(ctx).Info().Str("target", target.Digest.String()).Msg("Constructing Unixfs directory over manifest blobs")
-	nd, err := ConstructDAGFromManifest(ctx, p, target, opts...)
+	lnk, err := ConstructDAGFromManifest(ctx, p, target, opts...)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	return nd.Cid(), nil
+	asCidLink, ok := lnk.(cidlink.Link)
+	if !ok {
+		return cid.Undef, errors.New("unsupported link type")
+	}
+
+	return asCidLink.Cid, nil
 }
 
 func Convert(ctx context.Context, peer p2plab.Peer, fetcher remotes.Fetcher, store content.Store, desc ocispec.Descriptor, opts ...p2plab.AddOption) (target ocispec.Descriptor, err error) {
@@ -278,13 +285,17 @@ func BuildManifestHandler(f images.HandlerFunc, peer p2plab.Peer, provider conte
 }
 
 func AddBlob(ctx context.Context, peer p2plab.Peer, r io.Reader, opts ...p2plab.AddOption) (digest.Digest, error) {
-	n, err := peer.Add(ctx, r, opts...)
+	lnk, err := peer.AddPrime(ctx, r, opts...)
 	if err != nil {
 		return "", err
 	}
 
-	c := n.Cid()
-	dgst, err := digestconv.CidToDigest(c)
+	asCidLink, ok := lnk.(cidlink.Link)
+	if !ok {
+		return "", errors.New("unsupported link type")
+	}
+
+	dgst, err := digestconv.CidToDigest(asCidLink.Cid)
 	if err != nil {
 		return "", err
 	}
@@ -292,7 +303,7 @@ func AddBlob(ctx context.Context, peer p2plab.Peer, r io.Reader, opts ...p2plab.
 	return dgst, nil
 }
 
-func ConstructDAGFromManifest(ctx context.Context, p p2plab.Peer, image ocispec.Descriptor, opts ...p2plab.AddOption) (ipld.Node, error) {
+func ConstructDAGFromManifest(ctx context.Context, p p2plab.Peer, image ocispec.Descriptor, opts ...p2plab.AddOption) (ipld.Link, error) {
 	settings := p2plab.AddSettings{
 		HashFunc: "sha2-256",
 	}
@@ -301,6 +312,11 @@ func ConstructDAGFromManifest(ctx context.Context, p p2plab.Peer, image ocispec.
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	hashFuncCode, ok := multihash.Names[strings.ToLower(settings.HashFunc)]
+	if !ok {
+		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "unrecognized hash function %q", settings.HashFunc)
 	}
 
 	provider := NewProvider(p)
@@ -312,36 +328,30 @@ func ConstructDAGFromManifest(ctx context.Context, p p2plab.Peer, image ocispec.
 		return nil, err
 	}
 
-	root := unixfs.EmptyDirNode()
-	root.SetCidBuilder(cid.V1Builder{MhType: multihash.Names[settings.HashFunc]})
-
-	dserv := p.DAGService()
-	e := dagutils.NewDagEditor(root, dserv)
-
+	var links []*dag.Link
 	descs := []ocispec.Descriptor{manifest.Config}
 	descs = append(descs, manifest.Layers...)
-
 	for _, desc := range descs {
 		c, err := digestconv.DigestToCid(desc.Digest)
 		if err != nil {
 			return nil, err
 		}
 
-		nd, err := dserv.Get(ctx, c)
-		if err != nil {
-			return nil, err
+		link := &dag.Link{
+			Link: cidlink.Link{c},
+			// TODO: use loader and compute size of its links
 		}
-
-		err = root.AddNodeLink(desc.Digest.String(), nd)
-		if err != nil {
-			return nil, err
-		}
+		links = append(links, link)
 	}
 
-	err = dserv.Add(ctx, root)
+	nb := ipldfree.NodeBuilder()
+	lb := cidlink.LinkBuilder{Prefix: cid.NewPrefixV1(cid.DagCBOR, hashFuncCode)}
+	builder := dag.NewBuilder(nb, lb, p.IPLDStorer())
+
+	nd, err := builder.NewNode(nil, links)
 	if err != nil {
 		return nil, err
 	}
 
-	return e.Finalize(ctx, dserv)
+	return lb.Build(ctx, ipld.LinkContext{}, nd, p.IPLDStorer())
 }

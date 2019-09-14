@@ -34,7 +34,7 @@ func DigestToCid(dgst digest.Digest) (cid.Cid, error) {
 		return cid.Cid{}, errors.Wrap(err, "failed to encode digest as SHA256 multihash")
 	}
 
-	return cid.NewCidV1(cid.DagProtobuf, multihash.Multihash(encoded)), nil
+	return cid.NewCidV1(cid.DagCBOR, multihash.Multihash(encoded)), nil
 }
 
 func CidToDigest(c cid.Cid) (digest.Digest, error) {

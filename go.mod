@@ -22,6 +22,7 @@ require (
 	github.com/ipfs/go-cid v0.0.3
 	github.com/ipfs/go-datastore v0.1.0
 	github.com/ipfs/go-ds-badger v0.0.5
+	github.com/ipfs/go-graphsync v0.0.2
 	github.com/ipfs/go-ipfs v0.4.22-0.20190829225759-d778b84ff1c3
 	github.com/ipfs/go-ipfs-blockstore v0.1.0
 	github.com/ipfs/go-ipfs-chunker v0.0.1
@@ -33,6 +34,7 @@ require (
 	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-merkledag v0.2.3
 	github.com/ipfs/go-unixfs v0.2.1
+	github.com/ipld/go-ipld-prime v0.0.1-filecoin
 	github.com/libp2p/go-libp2p v0.3.0
 	github.com/libp2p/go-libp2p-core v0.2.2
 	github.com/libp2p/go-libp2p-kad-dht v0.2.0
@@ -68,10 +70,11 @@ require (
 	github.com/urfave/cli v1.20.0
 	go.etcd.io/bbolt v1.3.3
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
-	google.golang.org/grpc v1.20.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
 
 replace github.com/ipfs/go-merkledag => github.com/hinshun/go-merkledag v0.1.1-0.20190906215342-bd347129454f
 
 replace github.com/ipfs/go-blockservice => github.com/hinshun/go-blockservice v0.1.3-0.20190906224057-ac48d5e10ef6
+
+replace github.com/ipfs/go-graphsync => ../../ipfs/go-graphsync
