@@ -53,19 +53,18 @@ require (
 	github.com/olekukonko/tablewriter v0.0.2-0.20190618033246-cc27d85e17ce
 	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/opencontainers/image-spec v1.0.1
-	github.com/opencontainers/runc v1.0.0-rc8 // indirect
+	github.com/opencontainers/runc v1.1.5 // indirect
 	github.com/opentracing-contrib/go-stdlib v0.0.0-20190519235532-cf7a6c988dc9
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/pkg/errors v0.8.1
 	github.com/rs/xid v1.2.1
 	github.com/rs/zerolog v1.14.4-0.20190719171043-b806a5ecbe53
-	github.com/sirupsen/logrus v1.4.0 // indirect
 	github.com/stretchr/testify v1.3.0
 	github.com/uber-go/atomic v1.4.0 // indirect
 	github.com/uber/jaeger-client-go v2.16.0+incompatible
 	github.com/uber/jaeger-lib v2.0.0+incompatible // indirect
-	github.com/urfave/cli v1.20.0
+	github.com/urfave/cli v1.22.1
 	go.etcd.io/bbolt v1.3.3
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	google.golang.org/grpc v1.20.1 // indirect
